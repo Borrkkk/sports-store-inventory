@@ -61,13 +61,17 @@ export function loadProducts(): Product[] {
   if (!file.exists) return [];
   try {
     const parsed: unknown = JSON.parse(file.textSync());
-    if (!Array.isArray(parsed)) return [];
-    return parsed.flatMap((item) => {
+    if (!Array.isArray(parsed)) {
+      throw new Error('Inventory file is not a list.');
+    }
+    return parsed.map((item, index) => {
       const product = normalizeProduct(item);
-      return product ? [product] : [];
+      if (!product) throw new Error('Invalid product at position ' + (index + 1));
+      return product;
     });
   } catch {
-    return [];
+    // Returning [] would allow a later save to overwrite unreadable records.
+    throw new Error('The saved inventory file is unreadable. Do not delete the app or its data.');
   }
 }
 
