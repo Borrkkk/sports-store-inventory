@@ -56,6 +56,8 @@ export async function exportInventory(products: Product[], kind: ExportKind): Pr
 
   const zip = new JSZip();
   zip.file('inventory.xlsx', spreadsheet, { base64: true });
+  // Retain original records for recovery; the spreadsheet is not a lossless backup.
+  zip.file('inventory.json', JSON.stringify(products, null, 2));
   for (const product of products) {
     const photo = await readPhotoBase64(product.imageName);
     if (photo) zip.file(`photos/${product.imageName}`, photo, { base64: true });
