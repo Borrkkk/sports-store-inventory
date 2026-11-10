@@ -1,0 +1,15 @@
+export const colors = {
+  navy: '#0B3A5B',
+  navyDark: '#07283F',
+  bg: '#F3F5F8',
+  card: '#FFFFFF',
+  text: '#12202B',
+  muted: '#5C6B78',
+  line: '#E2E8EF',
+  orange: '#E85D04',
+  green: '#1F7A4D',
+  danger: '#B42318',
+  chip: '#E8EEF4',
+  warningBg: '#FFF6E8',
+  overlay: 'rgba(7, 18, 28, 0.55)',
+};

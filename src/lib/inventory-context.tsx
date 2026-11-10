@@ -1,0 +1,113 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+
+import { loadProducts, saveProducts } from '@/lib/storage';
+import type { Product } from '@/lib/types';
+import { upcsMatch } from '@/lib/upc';
+
+type InventoryValue = {
+  ready: boolean;
+  products: Product[];
+  findByUpc: (upc: string) => Product | null;
+  addProduct: (product: Product) => void;
+  updateProduct: (product: Product) => void;
+  deleteProduct: (id: string) => void;
+  incrementQuantity: (id: string) => void;
+};
+
+const InventoryContext = createContext<InventoryValue | null>(null);
+
+export function InventoryProvider({ children }: { children: ReactNode }) {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [ready, setReady] = useState(false);
+  const productsRef = useRef<Product[]>([]);
+
+  useEffect(() => {
+    try {
+      const loaded = loadProducts();
+      productsRef.current = loaded;
+      setProducts(loaded);
+    } finally {
+      setReady(true);
+    }
+  }, []);
+
+  const commit = useCallback((next: Product[]) => {
+    saveProducts(next);
+    productsRef.current = next;
+    setProducts(next);
+  }, []);
+
+  const ordered = useMemo(
+    () => [...products].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [products],
+  );
+
+  const findByUpc = useCallback((upc: string) => {
+    return productsRef.current.find((product) => upcsMatch(product.upc, upc)) ?? null;
+  }, []);
+
+  const addProduct = useCallback(
+    (product: Product) => {
+      commit([product, ...productsRef.current]);
+    },
+    [commit],
+  );
+
+  const updateProduct = useCallback(
+    (product: Product) => {
+      commit(productsRef.current.map((item) => (item.id === product.id ? product : item)));
+    },
+    [commit],
+  );
+
+  const deleteProduct = useCallback(
+    (id: string) => {
+      commit(productsRef.current.filter((item) => item.id !== id));
+    },
+    [commit],
+  );
+
+  const incrementQuantity = useCallback(
+    (id: string) => {
+      const now = new Date().toISOString();
+      commit(
+        productsRef.current.map((item) =>
+          item.id === id ? { ...item, quantity: item.quantity + 1, updatedAt: now } : item,
+        ),
+      );
+    },
+    [commit],
+  );
+
+  const value = useMemo(
+    () => ({
+      ready,
+      products: ordered,
+      findByUpc,
+      addProduct,
+      updateProduct,
+      deleteProduct,
+      incrementQuantity,
+    }),
+    [ready, ordered, findByUpc, addProduct, updateProduct, deleteProduct, incrementQuantity],
+  );
+
+  return <InventoryContext.Provider value={value}>{children}</InventoryContext.Provider>;
+}
+
+export function useInventory(): InventoryValue {
+  const value = useContext(InventoryContext);
+  if (!value) {
+    throw new Error('useInventory must be used within InventoryProvider');
+  }
+  return value;
+}

@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# photos copied from the phone while Expo is running
+/computer-photos/
