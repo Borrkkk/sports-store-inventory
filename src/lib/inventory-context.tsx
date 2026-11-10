@@ -15,6 +15,7 @@ import { upcsMatch } from '@/lib/upc';
 
 type InventoryValue = {
   ready: boolean;
+  loadError: string | null;
   products: Product[];
   findByUpc: (upc: string) => Product | null;
   addProduct: (product: Product) => void;
@@ -28,6 +29,8 @@ const InventoryContext = createContext<InventoryValue | null>(null);
 export function InventoryProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const loadErrorRef = useRef<string | null>(null);
   const productsRef = useRef<Product[]>([]);
 
   useEffect(() => {
@@ -35,12 +38,19 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       const loaded = loadProducts();
       productsRef.current = loaded;
       setProducts(loaded);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not read inventory.';
+      loadErrorRef.current = message;
+      setLoadError(message);
     } finally {
       setReady(true);
     }
   }, []);
 
   const commit = useCallback((next: Product[]) => {
+    if (loadErrorRef.current) {
+      throw new Error('Inventory is unavailable. Existing data was not changed.');
+    }
     saveProducts(next);
     productsRef.current = next;
     setProducts(next);
@@ -91,6 +101,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       ready,
+      loadError,
       products: ordered,
       findByUpc,
       addProduct,
@@ -98,7 +109,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       deleteProduct,
       incrementQuantity,
     }),
-    [ready, ordered, findByUpc, addProduct, updateProduct, deleteProduct, incrementQuantity],
+    [ready, loadError, ordered, findByUpc, addProduct, updateProduct, deleteProduct, incrementQuantity],
   );
 
   return <InventoryContext.Provider value={value}>{children}</InventoryContext.Provider>;
