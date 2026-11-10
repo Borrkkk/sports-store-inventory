@@ -25,7 +25,8 @@ import { colors } from '@/theme';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { ready, products } = useInventory();
+  const { ready, loadError, products } = useInventory();
+  const unitCount = useMemo(() => products.reduce((total, item) => total + item.quantity, 0), [products]);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All');
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
@@ -103,7 +104,7 @@ export default function HomeScreen() {
         { text: 'Cancel', style: 'cancel' },
         { text: 'Save photos on computer', onPress: () => void copyPhotosToComputer() },
         { text: 'Spreadsheet only', onPress: () => void runExport('sheet') },
-        { text: 'Spreadsheet and photos', onPress: () => void runExport('zip') },
+        { text: 'Full backup (data, sheet and photos)', onPress: () => void runExport('zip') },
       ],
     );
   }
@@ -112,6 +113,18 @@ export default function HomeScreen() {
     return (
       <View style={styles.loading}>
         <ActivityIndicator color={colors.navy} size="large" />
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View style={styles.loading}>
+        <Text style={styles.emptyTitle}>Inventory could not be opened</Text>
+        <Text style={styles.emptyBody}>{loadError}</Text>
+        <Text style={styles.emptyBody}>
+          Existing inventory was not changed. Restore a known-good backup before recording more products.
+        </Text>
       </View>
     );
   }
@@ -138,7 +151,7 @@ export default function HomeScreen() {
         ListHeaderComponent={
           <View style={styles.header}>
             <Text style={styles.count}>
-              {products.length === 1 ? '1 item' : `${products.length} items`}
+              {`${products.length} product entries · ${unitCount} total units counted`}
             </Text>
             <TextInput
               autoCapitalize="none"
@@ -217,6 +230,8 @@ const styles = StyleSheet.create({
   },
   loading: {
     alignItems: 'center',
+    gap: 12,
+    padding: 24,
     backgroundColor: colors.bg,
     flex: 1,
     justifyContent: 'center',
