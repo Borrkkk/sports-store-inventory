@@ -1,5 +1,6 @@
 import { Directory, File, Paths } from 'expo-file-system';
 
+import { departmentForCategory } from '@/lib/categories';
 import type { Product } from '@/lib/types';
 
 function photoDirectory(): Directory {
@@ -45,6 +46,11 @@ function normalizeProduct(value: unknown): Product | null {
     upc: typeof item.upc === 'string' && item.upc.length > 0 ? item.upc : null,
     imageName: item.imageName,
     category: typeof item.category === 'string' ? item.category : '',
+    department:
+      typeof item.department === 'string' && item.department
+        ? item.department
+        : departmentForCategory(typeof item.category === 'string' ? item.category : ''),
+    audience: typeof item.audience === 'string' ? item.audience : '',
     sport: typeof item.sport === 'string' ? item.sport : '',
     size: typeof item.size === 'string' ? item.size : '',
     color: typeof item.color === 'string' ? item.color : '',
@@ -61,13 +67,17 @@ export function loadProducts(): Product[] {
   if (!file.exists) return [];
   try {
     const parsed: unknown = JSON.parse(file.textSync());
-    if (!Array.isArray(parsed)) return [];
-    return parsed.flatMap((item) => {
+    if (!Array.isArray(parsed)) {
+      throw new Error('Inventory file is not a list.');
+    }
+    return parsed.map((item, index) => {
       const product = normalizeProduct(item);
-      return product ? [product] : [];
+      if (!product) throw new Error('Invalid product at position ' + (index + 1));
+      return product;
     });
   } catch {
-    return [];
+    // Returning [] would allow a later save to overwrite unreadable records.
+    throw new Error('The saved inventory file is unreadable. Do not delete the app or its data.');
   }
 }
 
